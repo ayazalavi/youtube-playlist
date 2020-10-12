@@ -66,19 +66,55 @@ const YoutubeControls = () => {
 	);
 };
 
-function LoadWebview({ youtubeid, hidden }) {
+function LoadWebview({ youtubeid, play }) {
 	const youtubeVid =
-		'<iframe id="ytplayer" type="text/html" width="100%" height="100%"' +
+		'<iframe id="' +
+		youtubeid +
+		'" type="text/html" width="100%" height="100%"' +
 		'src="https://www.youtube.com/embed/' +
 		youtubeid +
 		//data[currentVideo].id +
-		'?autoplay=1&playsinline=1"' +
-		'frameborder="0"></iframe>';
+		'?autoplay=1&playsinline=1" frameborder="0"></iframe>';
+	const js = `
+		var tag = document.createElement('script');
+    	tag.src = "https://www.youtube.com/iframe_api";
+    	var firstScriptTag = document.getElementsByTagName('script')[0];
+		firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+		
+		var player;
+		document.getElementById('${youtubeid}').onload = function() {
+			onYouTubeIframeAPIReady();
+		}
+		onYouTubeIframeAPIReady();
+		function onYouTubeIframeAPIReady() {
+		  player = new YT.Player('${youtubeid}', {
+			events: {
+			  'onReady': onPlayerReady,
+			  'onStateChange': onPlayerStateChange
+			}
+		  });
+		}
+		function onPlayerReady(event) {
+			if (${play}) {
+				alert("play")
+				player.playVideo();
+			}
+			else {
+				alert("pause")
+				player.pauseVideo();
+			}
+		}
+		function onPlayerStateChange(event) {
+			alert(456)
+		}
+    `;
+
+	const webview = useRef(null);
 	const windowWidth = Dimensions.get("window").width;
 	const windowHeight = Dimensions.get("window").height;
 	return (
 		<WebView
-			//	ref={webview}
+			ref={webview}
 			startInLoadingState={true}
 			mediaPlaybackRequiresUserAction={false}
 			userAgent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3865.90 Safari/537.36"
@@ -94,6 +130,7 @@ function LoadWebview({ youtubeid, hidden }) {
 				const { nativeEvent } = syntheticEvent;
 				//let youtubeplayer = document.getElementById("ytplayer");
 				//alert(youtubeplayer);
+				//webview.current.injectJavaScript(js);
 			}}
 			style={{
 				height: windowHeight,
@@ -117,9 +154,14 @@ function Player(props) {
 		changeScreenOrientation(ScreenOrientation.OrientationLock.LANDSCAPE_LEFT);
 		return () => ScreenOrientation.unlockAsync();
 	});
-	const renderItem = ({ item }) => (
-		<LoadWebview youtubeid={item.id} hidden={false} />
-	);
+	const renderItem = ({ item, index }) => {
+		return (
+			<LoadWebview
+				youtubeid={item.id}
+				play={index === currentVideo ? true : false}
+			/>
+		);
+	};
 	const flatlist = useRef(null);
 
 	const url =
